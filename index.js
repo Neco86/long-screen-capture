@@ -2,7 +2,6 @@ const video = document.createElement('video');
 const canvas = document.createElement('canvas');
 const ctx = canvas.getContext('2d');
 const output = document.getElementById('output');
-const outputCtx = output.getContext('2d');
 const upload = document.getElementById('upload');
 const loading = document.getElementById('loading');
 const download = document.getElementById('download');
@@ -124,8 +123,8 @@ const spliceImages = () => {
         offset += offsetY;
     }
 
-    output.width = images[0].width;
-    output.height = images[0].height - offset;
+    canvas.width = images[0].width;
+    canvas.height = images[0].height - offset;
 
 
     offset = 0;
@@ -135,10 +134,10 @@ const spliceImages = () => {
         offset += offsetY;
 
         if (!i) {
-            outputCtx.drawImage(images[i], 0, 0);
+            ctx.drawImage(images[i], 0, 0);
         }
         if (offsetY) {
-            outputCtx.drawImage(
+            ctx.drawImage(
                 images[i + 1],
                 0, y2,
                 images[i + 1].width, images[i + 1].height - y2,
@@ -198,9 +197,11 @@ const handleLoadData = async () => {
     await Promise.all([loadOpencv(), captureVideo()]);
     spliceImages();
     loading.innerText = '';
+    const url = canvas.toDataURL('image/png');
     output.style.display = 'block';
+    output.src = url;
     download.download = `longScreenCapture_${Date.now()}.png`;
-    download.href = output.toDataURL('image/png');
+    download.href = url;
     download.style.display = 'block';
 };
 
