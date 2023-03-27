@@ -195,7 +195,6 @@ const captureVideo = async () => {
 };
 
 const handleLoadData = async () => {
-    loading.innerText = 'loading...';
     await Promise.all([loadOpencv(), captureVideo()]);
     spliceImages();
     loading.innerText = '';
@@ -207,9 +206,12 @@ const handleLoadData = async () => {
 
 upload.onchange = e => {
     if (e.target.files && e.target.files[0]) {
+        loading.innerText = 'loading...';
         const f = e.target.files[0];
         const reader = new FileReader();
         reader.onload = (e) => {
+            video.muted = true;
+            video.autoplay = true;
             video.src = e.target.result;
             upload.style.display = 'none';
         }
