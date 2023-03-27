@@ -7,9 +7,6 @@ const upload = document.getElementById('upload');
 const loading = document.getElementById('loading');
 const download = document.getElementById('download');
 
-output.style.display = 'none';
-download.style.display = 'none';
-
 const step = 0.5;
 
 const images = [];
