@@ -56,10 +56,8 @@ const spliceImages = async () => {
         offset += offsetY;
     }
 
-
     canvas.width = images[0].width;
     canvas.height = images[0].height - offset;
-
 
     offset = 0;
     for (let i = 0; i < offsetInfos.length; i++) {
@@ -105,7 +103,6 @@ const capture = async (second) => {
 };
 
 const captureVideo = async () => {
-
     for (let i = 0; i <= video.duration; i += step) {
         await capture(i);
         const percent = ((i / video.duration) * 50).toFixed(0);
@@ -130,15 +127,11 @@ const handleLoadData = async () => {
 upload.onchange = e => {
     if (e.target.files && e.target.files[0]) {
         loading.innerText = 'loading...';
-        const f = e.target.files[0];
-        const reader = new FileReader();
-        reader.onload = (e) => {
-            video.muted = true;
-            video.autoplay = true;
-            video.src = e.target.result;
-            upload.style.display = 'none';
-        }
-        reader.readAsDataURL(f);
+        const url = URL.createObjectURL(e.target.files[0]);
+        video.muted = true;
+        video.autoplay = true;
+        video.src = url;
+        upload.style.display = 'none';
     }
 }
 
