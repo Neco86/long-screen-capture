@@ -5,114 +5,47 @@ const output = document.getElementById('output');
 const upload = document.getElementById('upload');
 const loading = document.getElementById('loading');
 const download = document.getElementById('download');
+const worker = new Worker('./worker.js');
 
 const step = 0.5;
 
 const images = [];
 
-let loadOpenCvPromise = null;
-
-const findCounters = (img) => {
-    if (img.counters) {
-        return img.counters;
-    }
-    cv.cvtColor(img, img, cv.COLOR_RGBA2GRAY, 0);
-    cv.Sobel(img, img, cv.CV_8U, 1, 0, 3);
-    cv.threshold(img, img, 0, 255, cv.THRESH_OTSU + cv.THRESH_BINARY);
-    const erodeKernel = cv.getStructuringElement(
-        cv.MORPH_RECT,
-        new cv.Size(5, 5)
-    );
-    const dilateKernel = cv.getStructuringElement(
-        cv.MORPH_RECT,
-        new cv.Size(10, 10)
-    );
-    cv.dilate(img, img, dilateKernel);
-    cv.erode(img, img, erodeKernel);
-    cv.Canny(img, img, 10, 10);
-    const contours = new cv.MatVector();
-    const hierarchy = new cv.Mat();
-    cv.findContours(
-        img,
-        contours,
-        hierarchy,
-        cv.RETR_CCOMP,
-        cv.CHAIN_APPROX_SIMPLE
-    );
-    const res = [];
-    for (let i = 0; i < contours.size(); ++i) {
-        const rotatedRect = cv.minAreaRect(contours.get(i));
-        res.push(rotatedRect);
-    }
-    contours.delete();
-    hierarchy.delete();
-    img.counters = res;
-    return img.counters;
-};
-
 const getOffsetInfo = (img1, img2) => {
-    const counters1 = findCounters(img1);
-    const counters2 = findCounters(img2);
-
-    const getKey = (c) =>
-        `${c.center.x}_${c.size.width}_${c.size.height}_${c.angle}`;
-
-    const distances = {};
-    let maxSameDistance = 0;
-    let distance = 0;
-
-    const matches = counters1.filter((t1) => {
-        const getDistance = (a, b) => Math.abs(a.center.y - b.center.y);
-        const res = counters2.filter((t2) => getKey(t1) === getKey(t2)).sort((a,b) => getDistance(a,t1) - getDistance(b, t1));
-
-        if (res.length) {
-            t1.match = res[0];
-            const d = res[0].center.y - t1.center.y;
-            t1.distance = d;
-            if (d) {
-                distances[d] ? distances[d]+=1 : distances[d] = 1;
-                if (distances[d] > maxSameDistance) {
-                    maxSameDistance = distances[d];
-                    distance = d;
-                }
-            }
-            return true;
+    canvas.width = img1.width;
+    canvas.height = img1.height;
+    ctx.drawImage(img1, 0, 0);
+    const data1 = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    ctx.drawImage(img2, 0, 0);
+    const data2 = ctx.getImageData(0, 0, canvas.width, canvas.height);
+    worker.postMessage({
+        method: 'getOffsetInfo',
+        args: {
+            data1,
+            data2,
+            counters1: img1.counters,
+            counters2: img2.counters
         }
-        return false;
     });
-
-    const zeroDistance = matches.filter(t => !t.distance);
-    if (zeroDistance.length > matches.length * 0.9) {
-        return {
-            y1: 0,
-            y2: 0
+    return new Promise(resolve => {
+        worker.onmessage = function (event) {
+            img1.counters = event.data.counters1;
+            img2.counters = event.data.counters2;
+            resolve(event.data);
         }
-    }
+    })
+}
 
-
-    const goodsMatches = matches.filter(t1 => t1.distance === distance).sort((a,b) => a.center.y - b.center.y);
-    if (goodsMatches.length && goodsMatches.length > 0.1 * matches.length) {
-        return {
-            y1: goodsMatches[0].center.y,
-            y2: goodsMatches[0].match.center.y
-        }
-    }
-
-    return {
-        y1: 0,
-        y2: 0
-    };
-};
-
-const spliceImages = () => {
-    const imgs = images.map((img) => cv.imread(img));
-
+const spliceImages = async () => {
     const offsetInfos = [];
 
-    for (let i = 0; i < imgs.length - 1; i++) {
-        const img1 = imgs[i];
-        const img2 = imgs[i + 1];
-        const offsetInfo = getOffsetInfo(img1, img2);
+    for (let i = 0; i < images.length - 1; i++) {
+        const img1 = images[i];
+        const img2 = images[i + 1];
+        const offsetInfo = await getOffsetInfo(img1, img2);
+        // console.log(offsetInfo);
+        const percent =  ((i / (images.length - 2)) * 50 + 50).toFixed(0);
+        loading.innerText = `loading...(${percent}%)`;
         offsetInfos.push(offsetInfo);
     }
 
@@ -122,6 +55,7 @@ const spliceImages = () => {
         const offsetY = y2 - y1;
         offset += offsetY;
     }
+
 
     canvas.width = images[0].width;
     canvas.height = images[0].height - offset;
@@ -148,23 +82,6 @@ const spliceImages = () => {
     }
 };
 
-const loadOpencv = () => {
-    if (loadOpenCvPromise) {
-        return loadOpenCvPromise;
-    }
-    loadOpenCvPromise = new Promise((resolve) => {
-        const script = document.createElement('script');
-        script.src = './opencv.js';
-        script.onload = () => {
-            cv['onRuntimeInitialized'] = () => {
-                resolve();
-            };
-        };
-        document.body.append(script);
-    });
-    return loadOpenCvPromise;
-};
-
 const capture = async (second) => {
     video.currentTime = second;
     await new Promise((resolve) => {
@@ -188,14 +105,19 @@ const capture = async (second) => {
 };
 
 const captureVideo = async () => {
+
     for (let i = 0; i <= video.duration; i += step) {
         await capture(i);
+        const percent = ((i / video.duration) * 50).toFixed(0);
+        loading.innerText = `loading...(${percent}%)`;
     }
 };
 
 const handleLoadData = async () => {
-    await Promise.all([loadOpencv(), captureVideo()]);
-    spliceImages();
+    loading.innerText = `loading...(0%)`;
+    await captureVideo();
+    loading.innerText = `loading...(50%)`;
+    await spliceImages();
     loading.innerText = '';
     const url = canvas.toDataURL('image/png');
     output.style.display = 'block';
@@ -221,5 +143,3 @@ upload.onchange = e => {
 }
 
 video.onloadeddata = handleLoadData;
-
-loadOpencv();
