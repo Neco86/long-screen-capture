@@ -1,2 +1,2 @@
-# [video-2-long-screen-capture](https://neco86.github.io/video-2-long-screen-capture/)
-Convert the video to a long screenshot
+# [long-screen-capture](https://neco86.github.io/long-screen-capture/)
+Convert the images/video to a long screenshot
