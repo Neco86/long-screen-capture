@@ -1,9 +1,9 @@
 {
   "/umi.css": "./umi.5426e05e.css",
-  "/umi.js": "./umi.cc9d3841.js",
-  "/p__Home.css": "./p__Home.ea86f34a.chunk.css",
-  "/p__Home.js": "./p__Home.5eb84c03.async.js",
+  "/umi.js": "./umi.d8bec0b4.js",
+  "/p__Home.css": "./p__Home.91a46a20.chunk.css",
+  "/p__Home.js": "./p__Home.098cfe9f.async.js",
   "/public/opencv.js": "./opencv.js",
-  "/public/worker.js": "./worker.js",
-  "/public/favicon.png": "./favicon.png"
+  "/public/favicon.png": "./favicon.png",
+  "/public/worker.js": "./worker.js"
 }
